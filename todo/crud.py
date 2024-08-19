@@ -20,8 +20,7 @@ def get_many_todos(db: Session, limit: int = 0):
     try:
         if limit == 0:
             return db.query(models.Todo).order_by(models.Todo.rank).all()
-        else:
-            return db.query(models.Todo).order_by(models.Todo.rank).limit(limit=limit).all()
+        return db.query(models.Todo).order_by(models.Todo.rank).limit(limit=limit).all()
     except Exception as e:
         logger.exception(
             "Something went wrong while getting the todo list: %s", e)
@@ -113,7 +112,7 @@ def add_todo(db: Session, todo: schemas.TodoCreate):
         raise
 
 
-def update_todo(db: Session, todo: schemas.TodoReturn, update_rank: bool):
+def update_todo_description(db: Session, todo: schemas.TodoReturn):
     """ Updates the provided todo
     
     Keyword Arguments:
@@ -129,10 +128,38 @@ def update_todo(db: Session, todo: schemas.TodoReturn, update_rank: bool):
         existing_todo = db.query(models.Todo).filter(
             models.Todo.todo_id == todo.todo_id).one()
         existing_todo.description = todo.description
+        db.commit()
+        return existing_todo
+    except MultipleResultsFound as e:
+        logger.exception(
+            "Violated duplicate key constraint, check database table for constraints: %s", e)
+        raise
+    except NoResultFound as e:
+        logger.exception(
+            "No result found for the given record: %s", e)
+        raise
+    except Exception as e:
+        logger.exception(
+            "Something went wrong while updating the todo: %s", e)
+        raise
 
-        if update_rank:
-            existing_todo.rank = todo.rank
 
+def update_todo_rank(db: Session, todo_id: int, new_rank: str):
+    """ Updates the provided todo
+    
+    Keyword Arguments:
+    db -- The database session
+    todo -- The given todo
+
+    Updates and returns the todo if it exists in the database.
+    Raises NoResultFound otherwise.
+    Raises MultipleResultsDFound if multiple records are returned.
+    """
+
+    try:
+        existing_todo = db.query(models.Todo).filter(
+            models.Todo.todo_id == todo_id).one()
+        existing_todo.rank = new_rank
         db.commit()
         return existing_todo
     except MultipleResultsFound as e:

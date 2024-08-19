@@ -129,7 +129,7 @@ def update_todo(todo: schemas.TodoUpdate, db: Session = Depends(get_db)):
 
     Returns the updated todo if successful.
     """
-    return crud.update_todo(db, todo=todo, update_rank=False)
+    return crud.update_todo_description(db, todo=todo)
 
 
 @app.delete("/todo/", status_code=status.HTTP_204_NO_CONTENT)
@@ -146,7 +146,11 @@ def delete_todo(todo_id: int, db: Session = Depends(get_db)):
 
 
 @app.put("/move_todo/", response_model=schemas.TodoReturn)
-def move_todo(todo: schemas.TodoReturn, prev_todo_rank: Optional[str] = None, next_todo_rank: Optional[str] = None, db: Session = Depends(get_db)):
+def move_todo(
+    todo_id: int, 
+    prev_todo_rank: Optional[str] = None,
+    next_todo_rank: Optional[str] = None,
+    db: Session = Depends(get_db)):
     """ A PUT request to move a todo, given its new neighboring todos
     
     Keyword Arguments:
@@ -158,24 +162,20 @@ def move_todo(todo: schemas.TodoReturn, prev_todo_rank: Optional[str] = None, ne
     Returns the moved todo if successful.
     """
 
-    # No change if previous or next rank is same as current rank
-    if todo.rank in (prev_todo_rank, next_todo_rank):
-        return todo
-
     if prev_todo_rank and next_todo_rank:
-        todo.rank = str(between(parse(prev_todo_rank), parse(next_todo_rank)))
+        new_rank = str(between(parse(prev_todo_rank), parse(next_todo_rank)))
     elif prev_todo_rank:
-        todo.rank = str(parse(prev_todo_rank).next(step=LEXORANK_STEP))
+        new_rank = str(parse(prev_todo_rank).next(step=LEXORANK_STEP))
     elif next_todo_rank:
-        todo.rank = str(parse(next_todo_rank).prev(step=LEXORANK_STEP))
+        new_rank = str(parse(next_todo_rank).prev(step=LEXORANK_STEP))
     else:
         raise ValueError("Either add prev_todo_rank or next_todo_rank")
     
-    return crud.update_todo(db, todo=todo, update_rank=True)
+    return crud.update_todo_rank(db, todo_id=todo_id, new_rank=new_rank)
 
 
 @app.put("/move_todo_to_pos/", response_model=schemas.TodoReturn)
-def move_todo_to_pos(todo: schemas.TodoReturn, new_pos: int, db: Session = Depends(get_db)):
+def move_todo_to_pos(todo_id: int, new_pos: int, db: Session = Depends(get_db)):
     """ A PUT request to move a todo, given an index
     
     Keyword Arguments:
@@ -195,6 +195,5 @@ def move_todo_to_pos(todo: schemas.TodoReturn, new_pos: int, db: Session = Depen
         else:
             new_rank = str(parse(todos[-1].rank).next(LEXORANK_STEP))
 
-    todo.rank = new_rank
-    return crud.update_todo(db, todo=todo, update_rank=True)
+    return crud.update_todo_rank(db, todo_id=todo_id, new_rank=new_rank)
 
