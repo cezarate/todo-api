@@ -54,6 +54,11 @@ Run:
 ```bash
   uvicorn todo.main:app --reload
 ```
+
+## Testing
+Once the API has started, go to localhost:8000/docs to access the interactive API
+
+
 ## 🚀 About Me
 I'm a software developer.
 
